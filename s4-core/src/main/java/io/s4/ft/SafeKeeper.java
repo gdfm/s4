@@ -25,6 +25,8 @@ public class SafeKeeper {
                     0.75f, 2));
     private Thread eagerFetchingThread;
     private StateStorage stateStorage;
+    private KeyStorage keyStorage;
+    private NamingSchema namingSchema;
     private Dispatcher loopbackDispatcher;
     private SerializerDeserializer serializer;
 
@@ -39,15 +41,18 @@ public class SafeKeeper {
     }
 
     public void saveState(SafeKeeperId key, byte[] state) {
-        stateStorage.saveState(key, state, new StorageCallBackLogger());
+        String keyString = namingSchema.getStringRepresentation(key);
+        keyStorage.addKey(keyString);
+        stateStorage.saveState(keyString, state, new StorageCallBackLogger());
     }
 
     public byte[] fetchSerializedState(SafeKeeperId key) {
         byte[] result = null;
+        String keyString = namingSchema.getStringRepresentation(key);
         if (serializedStateCache.containsKey(key)) {
             result = serializedStateCache.remove(key);
         } else {
-            result = stateStorage.fetchState(key);
+            result = stateStorage.fetchState(keyString);
         }
         keysToRecover.remove(key);
         return result;
@@ -90,6 +95,22 @@ public class SafeKeeper {
 
     public StateStorage getStateStorage() {
         return stateStorage;
+    }
+
+    public void setKeyStorage(KeyStorage keyStorage) {
+        this.keyStorage = keyStorage;
+    }
+
+    public KeyStorage getKeyStorage() {
+        return keyStorage;
+    }
+
+    public void setNamingSchema(NamingSchema namingSchema) {
+        this.namingSchema = namingSchema;
+    }
+
+    public NamingSchema getNamingSchema() {
+        return namingSchema;
     }
 
     public void setLoopbackDispatcher(Dispatcher dispatcher) {

@@ -63,7 +63,7 @@ public class SafeKeeperId {
                 + getStringRepresentation();
     }
 
-    public String getStringRepresentation() {
+    private String getStringRepresentation() {
         return "[" + (streamName == null ? "" : streamName) + "];["
                 + (prototypeId == null ? "" : prototypeId) + "];["
                 + (className == null ? "" : className) + "];["

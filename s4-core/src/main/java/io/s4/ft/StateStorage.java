@@ -1,16 +1,8 @@
 package io.s4.ft;
 
-import java.util.Set;
-
 public interface StateStorage {
-	
-	
-	public void saveState(SafeKeeperId key, byte[] state,
-			StorageCallback callback);
 
-	public byte[] fetchState(SafeKeeperId key);
+    public void saveState(String key, byte[] state, StorageCallback callback);
 
-    // returns empty if no stored key
-	public Set<SafeKeeperId> fetchStoredKeys();
-
+    public byte[] fetchState(String key);
 }

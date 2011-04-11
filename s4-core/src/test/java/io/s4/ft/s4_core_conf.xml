@@ -175,17 +175,20 @@
 
 	<bean id="zeroPartitioner" class="io.s4.dispatcher.partitioner.DummyPartitioner" />
 
-	<bean id="safeKeeper" class="io.s4.ft.SafeKeeper" init-method="init">
-		<property name="stateStorage" ref="fsStateStorage" />
-		<property name="loopbackDispatcher" ref="loopbackDispatcher" />
-		<property name="serializer" ref="serDeser"/>
-	</bean>
+        <bean id="safeKeeper" class="io.s4.ft.SafeKeeper" init-method="init">
+                <property name="stateStorage" ref="fsStateStorage" />
+                <property name="keyStorage" ref="fsStateStorage" />
+                <property name="namingSchema" ref="fsNamingSchema" />
+                <property name="loopbackDispatcher" ref="loopbackDispatcher" />
+                <property name="serializer" ref="serDeser"/>
+        </bean>
 
-	<bean id="fsStateStorage" class="io.s4.ft.DefaultFileSystemStateStorage" init-method="checkStorageDir">
-		<!-- if not specified, default is <current_dir>/tmp/storage 
-		<property name="storageRootPath" value="${storage_root_path}" /> -->
-	</bean>
+        <bean id="fsStateStorage" class="io.s4.ft.DefaultFileSystemStateStorage" init-method="checkStorageDir">
+                <!-- if not specified, default is <current_dir>/tmp/storage 
+                <property name="storageRootPath" value="${storage_root_path}" /> -->
+        </bean>
 
+        <bean id="fsNamingSchema" class="io.s4.ft.FileSystemNamingSchema" />
 
 
 </beans>

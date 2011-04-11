@@ -87,6 +87,7 @@ public class CheckpointingTest extends S4TestCase {
             pe.initiateCheckpoint();
             signalCheckpointed.await();
 
+            NamingSchema ns = new FileSystemNamingSchema();
             SafeKeeperId safeKeeperId = pe.getSafeKeeperId();
             File expected = new File(System.getProperty("user.dir")
                     + File.separator
@@ -94,10 +95,7 @@ public class CheckpointingTest extends S4TestCase {
                     + File.separator
                     + "storage"
                     + File.separator
-                    + safeKeeperId.getPrototypeId()
-                    + File.separator
-                    + Base64.encodeBase64URLSafeString(safeKeeperId
-                            .getStringRepresentation().getBytes()));
+                    + ns.getStringRepresentation(safeKeeperId));
 
             // 4. verify that state was correctly persisted
             Assert.assertTrue(expected.exists());

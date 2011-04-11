@@ -1,7 +1,6 @@
 package io.s4.ft;
 
 import java.util.Set;
-import java.util.concurrent.ArrayBlockingQueue;
 
 import org.apache.log4j.Logger;
 
@@ -24,15 +23,21 @@ public class EagerSerializedStateFetcher implements Runnable {
     public void run() {
         // FIXME log
         System.out.println("STARTING EAGER FETCHING THREAD");
-        Set<SafeKeeperId> storedKeys = sk.getStateStorage().fetchStoredKeys();
-        for (SafeKeeperId key : storedKeys) {
+        Set<String> storedKeyStrings = sk.getKeyStorage().fetchStoredKeys();
+        NamingSchema ns = sk.getNamingSchema();
+        for (String keyString : storedKeyStrings) {
             // TODO validate ids through hash function?
+            String streamName = ns.getStreamName(keyString);
+            String prototypeID = ns.getPrototypeId(keyString);
+            String className = ns.getClassName(keyString);
+            String key = ns.getKey(keyString);
+            sk.getKeysToRecover().add(new SafeKeeperId(streamName, prototypeID, className, key));
         }
-        sk.getKeysToRecover().addAll(storedKeys);
 
         long startTime = System.currentTimeMillis();
         int tokenCount = TOKEN_COUNT;
-        for (SafeKeeperId safeKeeperId : storedKeys) {
+        
+        for (SafeKeeperId safeKeeperId : sk.getKeysToRecover()) {
 
             if (tokenCount == 0) {
                 if ((System.currentTimeMillis() - startTime) < (TOKEN_COUNT * TOKEN_TIME_MS)) {

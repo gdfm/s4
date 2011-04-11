@@ -9,26 +9,23 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.apache.commons.codec.binary.Base64;
 import org.apache.log4j.Logger;
 
-public class DefaultFileSystemStateStorage implements StateStorage {
+public class DefaultFileSystemStateStorage implements StateStorage, KeyStorage {
 
     private static Logger LOG = Logger.getLogger(DefaultFileSystemStateStorage.class);
     private String storageRootPath;
 
     @Override
-    public void saveState(SafeKeeperId key, byte[] state,
-            StorageCallback callback) {
+    public void saveState(String key, byte[] state, StorageCallback callback) {
         // TODO asynchronous
 
-        File f = safeKeeperID2File(key);
+        File f = key2File(key);
         if (!f.exists()) {
             if (!f.getParentFile().exists()) {
                 // parent file has prototype id
                 if (!f.getParentFile().mkdir()) {
-                    callback.storageOperationResult(
-                            SafeKeeper.StorageResultCode.FAILURE,
+                    callback.storageOperationResult(SafeKeeper.StorageResultCode.FAILURE,
                             "Cannot create directory for storing PE for prototype: "
                                     + f.getParentFile().getAbsolutePath());
                     return;
@@ -38,8 +35,7 @@ public class DefaultFileSystemStateStorage implements StateStorage {
             try {
                 f.createNewFile();
             } catch (IOException e) {
-                callback.storageOperationResult(
-                        SafeKeeper.StorageResultCode.FAILURE, e.getMessage());
+                callback.storageOperationResult(SafeKeeper.StorageResultCode.FAILURE, e.getMessage());
             }
         }
         FileOutputStream fos = null;
@@ -47,11 +43,9 @@ public class DefaultFileSystemStateStorage implements StateStorage {
             fos = new FileOutputStream(f);
             fos.write(state);
         } catch (FileNotFoundException e) {
-            callback.storageOperationResult(
-                    SafeKeeper.StorageResultCode.FAILURE, e.getMessage());
+            callback.storageOperationResult(SafeKeeper.StorageResultCode.FAILURE, e.getMessage());
         } catch (IOException e) {
-            callback.storageOperationResult(
-                    SafeKeeper.StorageResultCode.FAILURE, e.getMessage());
+            callback.storageOperationResult(SafeKeeper.StorageResultCode.FAILURE, e.getMessage());
         } finally {
             try {
                 if (fos != null) {
@@ -65,8 +59,8 @@ public class DefaultFileSystemStateStorage implements StateStorage {
     }
 
     @Override
-    public byte[] fetchState(SafeKeeperId key) {
-        File file = safeKeeperID2File(key);
+    public byte[] fetchState(String key) {
+        File file = key2File(key);
         if (LOG.isDebugEnabled()) {
             LOG.debug("Fetching " + file.getAbsolutePath() + "for : " + key);
         }
@@ -80,28 +74,23 @@ public class DefaultFileSystemStateStorage implements StateStorage {
                 long length = file.length();
 
                 /*
-                 * Arrays can only be created using int types, so ensure that
-                 * the file size is not too big before we downcast to create the
-                 * array.
+                 * Arrays can only be created using int types, so ensure that the file size is not too big before we
+                 * downcast to create the array.
                  */
                 if (length > Integer.MAX_VALUE) {
-                    throw new IOException("Error file is too large: "
-                            + file.getName() + " " + length + " bytes");
+                    throw new IOException("Error file is too large: " + file.getName() + " " + length + " bytes");
                 }
 
                 byte[] buffer = new byte[(int) length];
                 int offSet = 0;
                 int numRead = 0;
 
-                while (offSet < buffer.length
-                        && (numRead = in.read(buffer, offSet, buffer.length
-                                - offSet)) >= 0) {
+                while (offSet < buffer.length && (numRead = in.read(buffer, offSet, buffer.length - offSet)) >= 0) {
                     offSet += numRead;
                 }
 
                 if (offSet < buffer.length) {
-                    throw new IOException("Error, could not read entire file: "
-                            + file.getName() + " " + offSet + "/"
+                    throw new IOException("Error, could not read entire file: " + file.getName() + " " + offSet + "/"
                             + buffer.length + " bytes read");
                 }
 
@@ -126,8 +115,8 @@ public class DefaultFileSystemStateStorage implements StateStorage {
     }
 
     @Override
-    public Set<SafeKeeperId> fetchStoredKeys() {
-        Set<SafeKeeperId> keys = new HashSet<SafeKeeperId>();
+    public Set<String> fetchStoredKeys() {
+        Set<String> keys = new HashSet<String>();
         File rootDir = new File(storageRootPath);
         File[] dirs = rootDir.listFiles(new FileFilter() {
             @Override
@@ -143,26 +132,25 @@ public class DefaultFileSystemStateStorage implements StateStorage {
                 }
             });
             for (File file : files) {
-                keys.add(file2SafeKeeperID(file));
+                keys.add(file2key(file));
             }
         }
         return keys;
     }
 
-    private File safeKeeperID2File(SafeKeeperId key) {
-
-        return new File(storageRootPath
-                + File.separator
-                + key.getPrototypeId()
-                + File.separator
-                + Base64.encodeBase64URLSafeString(key.getStringRepresentation()
-                        .getBytes()));
+    @Override
+    public void addKey(String key) {
+        // do nothing, keys are already stored in the filesystem when saveState() is called
     }
 
-    private SafeKeeperId file2SafeKeeperID(File file) {
-        SafeKeeperId id = null;
-        id = new SafeKeeperId(new String(Base64.decodeBase64(file.getName())));
-        return id;
+    // the key is the file name itself
+    private File key2File(String key) {
+        return new File(storageRootPath + File.separator + key);
+    }
+
+    // the key is the file name itself
+    private String file2key(File file) {
+        return file.getName();
     }
 
     public String getStorageRootPath() {
@@ -174,8 +162,7 @@ public class DefaultFileSystemStateStorage implements StateStorage {
         File rootPathFile = new File(storageRootPath);
         if (!rootPathFile.exists()) {
             if (!rootPathFile.mkdirs()) {
-                LOG.error("could not create root storage directory : "
-                        + storageRootPath);
+                LOG.error("could not create root storage directory : " + storageRootPath);
             }
 
         }
@@ -184,12 +171,11 @@ public class DefaultFileSystemStateStorage implements StateStorage {
     public void checkStorageDir() {
         if (storageRootPath == null) {
 
-            File defaultStorageDir = new File(System.getProperty("user.dir")
-                    + File.separator + "tmp" + File.separator + "storage");
+            File defaultStorageDir = new File(System.getProperty("user.dir") + File.separator + "tmp" + File.separator
+                    + "storage");
             storageRootPath = defaultStorageDir.getAbsolutePath();
             if (LOG.isInfoEnabled()) {
-                LOG.info("Unspecified storage dir; using default dir: "
-                        + defaultStorageDir.getAbsolutePath());
+                LOG.info("Unspecified storage dir; using default dir: " + defaultStorageDir.getAbsolutePath());
             }
             if (!defaultStorageDir.exists()) {
                 if (!(defaultStorageDir.mkdirs())) {
@@ -201,5 +187,4 @@ public class DefaultFileSystemStateStorage implements StateStorage {
             }
         }
     }
-
 }
